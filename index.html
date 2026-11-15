@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transcriptor YT — transcripciones de YouTube en un clic</title>
+<meta name="description" content="Bookmarklet gratis para sacar la transcripción de cualquier video de YouTube con subtítulos: copiar, buscar, exportar .txt y .srt.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0c0e; --card:#151518; --line:#26262b; --text:#ececf0; --dim:#9a9aa5;
+    --red:#ff3b30; --red2:#ff6b4a; --blue:#3ea6ff; --hi:#1d2a3a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 Inter,system-ui,sans-serif}
+  a{color:var(--blue)}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  header{padding:22px 0;display:flex;align-items:center;gap:10px;font-weight:600}
+  header .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 14px var(--red)}
+  header small{color:var(--dim);font-weight:400;margin-left:auto}
+
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:40px 0 72px}
+  h1{font-size:clamp(34px,5vw,54px);line-height:1.05;letter-spacing:-.03em;margin:0 0 18px;font-weight:800}
+  h1 em{font-style:normal;background:linear-gradient(90deg,var(--red),var(--red2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{color:var(--dim);font-size:18px;margin:0 0 30px;max-width:30em}
+
+  .drag{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .bm{display:inline-flex;align-items:center;gap:10px;padding:16px 26px;border-radius:14px;
+      background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;text-decoration:none;
+      font-weight:700;font-size:18px;cursor:grab;box-shadow:0 10px 30px rgba(255,59,48,.35);
+      border:1px dashed rgba(255,255,255,.55);transition:transform .15s}
+  .bm:hover{transform:translateY(-2px)}
+  .bm:active{cursor:grabbing}
+  .bm.shake{animation:shake .45s}
+  @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+  .hint{color:var(--dim);font-size:14px;display:flex;align-items:center;gap:8px}
+  .hint .arrow{font-size:22px;animation:bob 1.4s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-6px)}}
+  .toast{min-height:22px;margin-top:12px;color:var(--red2);font-size:14px}
+
+  /* mock del panel */
+  .mock{background:#0f0f0f;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;font-family:Roboto,Arial,sans-serif}
+  .mock .top{padding:14px 16px 6px}
+  .mock .t1{font-weight:700;font-size:15px}
+  .mock .t2{font-size:12px;color:#aaa}
+  .mock .bar{display:flex;gap:6px;padding:8px 16px 10px;align-items:center}
+  .mock .sr{flex:1;border:1px solid #2e2e2e;border-radius:18px;padding:6px 12px;color:#777;font-size:13px}
+  .mock .b{border:1px solid #2e2e2e;background:#1b1b1b;border-radius:18px;padding:5px 11px;font-size:12px}
+  .mock .row{display:flex;gap:10px;padding:6px 16px;font-size:14px;line-height:1.45}
+  .mock .row b{color:var(--blue);font-weight:500;font-size:12px;min-width:44px;line-height:1.9}
+  .mock .row.on{background:var(--hi);margin:0 8px;padding:6px 8px;border-radius:8px}
+  .mock .st{font-size:12px;color:#aaa;padding:0 16px 6px}
+  .mock .rows{padding-bottom:14px}
+
+  section{padding:56px 0;border-top:1px solid var(--line)}
+  h2{font-size:28px;letter-spacing:-.02em;margin:0 0 26px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:s}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+  .steps .card::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;
+     background:rgba(255,59,48,.14);color:var(--red2);font-weight:700;margin-bottom:12px}
+  .card h3{margin:0 0 6px;font-size:17px}
+  .card p{margin:0;color:var(--dim);font-size:15px}
+  kbd{font-family:"JetBrains Mono",monospace;font-size:12px;background:#222;border:1px solid #333;border-bottom-width:2px;border-radius:6px;padding:1px 6px;color:var(--text)}
+  .feats{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .feat{display:flex;gap:14px;align-items:flex-start}
+  .feat .ic{font-size:22px;line-height:1.2}
+  .feat h3{margin:0;font-size:16px}
+  .feat p{margin:2px 0 0;color:var(--dim);font-size:15px}
+  .mobile{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
+  .copy{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px 18px;font:600 15px Inter,sans-serif;cursor:pointer}
+  .copy:hover{border-color:#444}
+  ol{color:var(--dim);margin:8px 0 0;padding-left:20px}
+  ol li{margin:4px 0}
+  .warn{background:linear-gradient(180deg,rgba(255,59,48,.06),transparent);border:1px solid rgba(255,59,48,.25)}
+  footer{padding:32px 0 48px;color:var(--dim);font-size:14px;border-top:1px solid var(--line)}
+
+  @media (max-width:520px){ header small{display:none} }
+  @media (max-width:820px){
+    .hero{grid-template-columns:1fr;padding-top:16px}
+    .steps,.feats{grid-template-columns:1fr}
+    .mobile{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><span class="dot"></span> Transcriptor YT <small>sin servidores · gratis · privado</small></header>
+
+  <div class="hero">
+    <div>
+      <h1>La transcripción de cualquier video de YouTube, <em>en un clic.</em></h1>
+      <p class="lead">Un botón para tu barra de favoritos. Lo tocás con el video abierto y te muestra la transcripción completa: buscás, saltás a cualquier momento, copiás o la bajás en .txt o .srt.</p>
+      <div class="drag">
+        <!-- El href lo genera build.mjs a partir de src/bookmarklet.js. No editar a mano. -->
+        <a id="bm" class="bm" href="javascript:(()%3D%3E%7Bconst%20t%3D%22ytx-overlay%22%2Ce%3Ddocument.getElementById(t)%3Bif(e)return%20void(e.__ytxClose%3Fe.__ytxClose()%3Ae.remove())%3Bif(!%2F(%5E%7C%5C.)youtube%5C.com%24%2F.test(location.hostname))return%20void%20alert(%22Transcriptor%20YT%3A%20abr%C3%AD%20un%20video%20en%20youtube.com%20y%20toc%C3%A1%20el%20favorito%20ah%C3%AD.%22)%3Bconst%20n%3D(t%2Ce%3Ddocument)%3D%3Ee.querySelector(t)%2Co%3D(t%2Ce%3Ddocument)%3D%3EArray.from(e.querySelectorAll(t))%2Cr%3Dt%3D%3Enew%20Promise(e%3D%3EsetTimeout(e%2Ct))%2Ca%3Dt%3D%3EString(t%7C%7C%22%22).replace(%2F%5Cs%2B%2Fg%2C%22%20%22).trim()%2Ci%3Dt%3D%3EString(t).split(%22%3A%22).map(Number).reduce((t%2Ce)%3D%3E60*t%2Be%2C0)%2Cs%3Dt%3D%3E%7Bt%3DMath.max(0%2CMath.floor(t))%3Bconst%20e%3DMath.floor(t%2F3600)%2Cn%3DMath.floor(t%253600%2F60)%2Co%3Dt%2560%2Cr%3Dt%3D%3EString(t).padStart(2%2C%220%22)%3Breturn%20e%3F%60%24%7Be%7D%3A%24%7Br(n)%7D%3A%24%7Br(o)%7D%60%3A%60%24%7Bn%7D%3A%24%7Br(o)%7D%60%7D%2Cc%3Dt%3D%3E%7Bconst%20e%3DMath.max(0%2CMath.round(1e3*t))%2Cn%3D(t%2Ce%3D2)%3D%3EString(t).padStart(e%2C%220%22)%3Breturn%60%24%7Bn(Math.floor(e%2F36e5))%7D%3A%24%7Bn(Math.floor(e%2536e5%2F6e4))%7D%3A%24%7Bn(Math.floor(e%256e4%2F1e3))%7D%2C%24%7Bn(e%251e3%2C3)%7D%60%7D%2Cl%3D(t%2Ce)%3D%3E%7Bif(t%26%26%22object%22%3D%3Dtypeof%20t)%7Be(t)%3Bfor(const%20n%20in%20t)l(t%5Bn%5D%2Ce)%7D%7D%2Cp%3Dt%3D%3E((t%3Dt.filter(t%3D%3Et.text%26%26isFinite(t.start)).sort((t%2Ce)%3D%3Et.start-e.start)).forEach((e%2Cn)%3D%3E%7Be.end%3Ee.start%7C%7C(e.end%3Dt%5Bn%2B1%5D%3Ft%5Bn%2B1%5D.start%3Ae.start%2B4)%7D)%2Ct)%2Cd%3Dasync()%3D%3E%7Bconst%20t%3Ddocument.cookie.match(%2F(%3F%3A%5E%7C%3B%5Cs*)(%3F%3ASAPISID%7C__Secure-3PAPISID)%3D(%5B%5E%3B%5D%2B)%2F)%3Bif(!t%7C%7C!crypto.subtle)return%7B%7D%3Bconst%20e%3DMath.floor(Date.now()%2F1e3)%2Cn%3Dawait%20crypto.subtle.digest(%22SHA-1%22%2C(new%20TextEncoder).encode(%60%24%7Be%7D%20%24%7Bt%5B1%5D%7D%20%24%7Blocation.origin%7D%60))%3Breturn%7BAuthorization%3A%60SAPISIDHASH%20%24%7Be%7D_%24%7BArray.from(new%20Uint8Array(n)%2Ct%3D%3Et.toString(16).padStart(2%2C%220%22)).join(%22%22)%7D%60%2C%22X-Origin%22%3Alocation.origin%2C%22X-Goog-AuthUser%22%3A%220%22%7D%7D%2Cu%3Dasync(t%2Ce)%3D%3E%7Bconst%20n%3Dwindow.ytcfg%26%26window.ytcfg.get%3Fwindow.ytcfg%3Anull%2Co%3Dn%26%26n.get(%22INNERTUBE_CONTEXT%22)%3Bif(!o)throw%20new%20Error(%22no%20encontr%C3%A9%20la%20config%20de%20YouTube%20(ytcfg)%22)%3Bconst%20r%3Dawait(async%20t%3D%3E%7Bconst%20e%3Dwindow.ytInitialData%2Cn%3De%26%26e.currentVideoEndpoint%26%26e.currentVideoEndpoint.watchEndpoint%26%26e.currentVideoEndpoint.watchEndpoint.videoId%3D%3D%3Dt%3Blet%20o%3Dnull%3Bif(n%26%26l(e%2Ct%3D%3E%7B!o%26%26t.getTranscriptEndpoint%26%26t.getTranscriptEndpoint.params%26%26(o%3Dt.getTranscriptEndpoint.params)%7D)%2Co)return%20o%3Bconst%20r%3D(await(await%20fetch(%60%2Fwatch%3Fv%3D%24%7Bt%7D%60%2C%7Bcredentials%3A%22include%22%7D)).text()).match(%2F%22getTranscriptEndpoint%22%3A%5C%7B%22params%22%3A%22(%5B%5E%22%5D%2B)%22%2F)%3Bif(!r)throw%20new%20Error(%22este%20video%20no%20ofrece%20transcripci%C3%B3n%22)%3Breturn%20r%5B1%5D%7D)(t)%2Ci%3Dn.get(%22INNERTUBE_API_KEY%22)%2Cs%3D%7B%22Content-Type%22%3A%22application%2Fjson%22%2C%22X-Youtube-Client-Name%22%3AString(n.get(%22INNERTUBE_CONTEXT_CLIENT_NAME%22)%7C%7C1)%2C%22X-Youtube-Client-Version%22%3AString(n.get(%22INNERTUBE_CLIENT_VERSION%22)%7C%7Co.client%26%26o.client.clientVersion%7C%7C%22%22)%2C...e%3Fawait%20d()%3A%7B%7D%7D%2Cc%3Dawait%20fetch(%22%2Fyoutubei%2Fv1%2Fget_transcript%3FprettyPrint%3Dfalse%22%2B(i%3F%60%26key%3D%24%7Bi%7D%60%3A%22%22)%2C%7Bmethod%3A%22POST%22%2Ccredentials%3Ae%3F%22include%22%3A%22omit%22%2Cheaders%3As%2Cbody%3AJSON.stringify(%7Bcontext%3Ao%2Cparams%3Ar%7D)%7D)%3Bif(!c.ok)throw%20new%20Error(%60get_transcript%20HTTP%20%24%7Bc.status%7D%60)%3Bconst%20u%3Dawait%20c.json()%2Cx%3D%5B%5D%3Bif(l(u%2Ct%3D%3E%7Bconst%20e%3Dt.transcriptSegmentRenderer%3Bvar%20n%3Be%26%26x.push(%7Bstart%3A%2Be.startMs%2F1e3%2Cend%3A%2Be.endMs%2F1e3%2Ctext%3Aa((n%3De.snippet%2Cn%3Fnull!%3Dn.simpleText%3Fn.simpleText%3A(n.runs%7C%7C%5B%5D).map(t%3D%3Et.text).join(%22%22)%3A%22%22))%7D)%7D)%2C!x.length)throw%20new%20Error(%22la%20API%20respondi%C3%B3%20sin%20segmentos%22)%3Breturn%20p(x)%7D%2Cx%3D%5B%22ytd-transcript-segment-renderer%22%2C%22transcript-segment-view-model%22%2C'%5Bclass*%3D%22transcript-segment%22%5D'%5D.join(%22%2C%22)%2Cf%3D()%3D%3E%7Bconst%20e%3Do(x).filter(e%3D%3E!e.closest(%60%23%24%7Bt%7D%60))%3Breturn%20e.filter(t%3D%3E!e.some(e%3D%3Ee!%3D%3Dt%26%26e.contains(t)))%7D%2Cm%3D%22%230f0f0f%22%2Cg%3D%22%232e2e2e%22%2Ch%3D%22%23f1f1f1%22%2Cb%3D%22%23aaaaaa%22%2Cy%3D%22%233ea6ff%22%2Cw%3D%22%23ff4e45%22%2Cv%3D(t%2Ce%2Cn%2Co)%3D%3E%7Bconst%20r%3Ddocument.createElement(t)%3Bif(e%26%26Object.assign(r.style%2Ce)%2Cn)for(const%20t%20in%20n)t.startsWith(%22on%22)%3Fr.addEventListener(t.slice(2)%2Cn%5Bt%5D)%3Ar%5Bt%5D%3Dn%5Bt%5D%3Breturn(o%7C%7C%5B%5D).forEach(t%3D%3Et%26%26r.append(t))%2Cr%7D%2CE%3D%7Bbackground%3A%22%231b1b1b%22%2Ccolor%3Ah%2Cborder%3A%601px%20solid%20%24%7Bg%7D%60%2CborderRadius%3A%2218px%22%2Cpadding%3A%226px%2012px%22%2Cfont%3A%22500%2012px%20Roboto%2CArial%2Csans-serif%22%2Ccursor%3A%22pointer%22%7D%2C%24%3Dn(%22video.html5-main-video%22)%7C%7Cn(%22video%22)%2CT%3D(()%3D%3E%7Bconst%20t%3Dnew%20URL(location.href)%2Ce%3Dt.searchParams.get(%22v%22)%3Bif(e)return%20e%3Bconst%20n%3Dt.pathname.match(%2F%5E%5C%2F(%3F%3Ashorts%7Clive%7Cembed)%5C%2F(%5B%5Cw-%5D%7B11%7D)%2F)%3Breturn%20n%3Fn%5B1%5D%3Anull%7D)()%2C_%3Da((n(%22ytd-watch-metadata%20h1%22)%7C%7C%7B%7D).textContent%7C%7Cdocument.title.replace(%2F%5E%5C(%5Cd%2B%5C)%5Cs*%2F%2C%22%22).replace(%2F%5Cs*-%5Cs*YouTube%5Cs*%24%2F%2C%22%22))%7C%7C%22transcripcion%22%3Blet%20C%3D%5B%5D%2CA%3D%5B%5D%2CI%3D!0%3Bconst%20S%3Dv(%22div%22%2C%7Bcolor%3Ab%2Cfont%3A%2212px%20Roboto%2CArial%2Csans-serif%22%2Cpadding%3A%220%2016px%208px%22%7D%2C%7BtextContent%3A%22Buscando%20transcripci%C3%B3n%E2%80%A6%22%7D)%2CR%3Dv(%22div%22%2C%7BoverflowY%3A%22auto%22%2Cflex%3A%221%22%2Cpadding%3A%220%208px%2012px%22%7D)%2Ck%3Dv(%22input%22%2C%7Bflex%3A%221%22%2CminWidth%3A%220%22%2Cbackground%3Am%2Ccolor%3Ah%2Cborder%3A%601px%20solid%20%24%7Bg%7D%60%2CborderRadius%3A%2218px%22%2Cpadding%3A%227px%2012px%22%2Cfont%3A%2213px%20Roboto%2CArial%2Csans-serif%22%2Coutline%3A%22none%22%7D%2C%7Btype%3A%22search%22%2Cplaceholder%3A%22Buscar%20en%20la%20transcripci%C3%B3n%22%2Coninput%3A()%3D%3EW()%7D)%2CN%3D()%3D%3EI%3FC.map(t%3D%3E%60%5B%24%7Bs(t.start)%7D%5D%20%24%7Bt.text%7D%60).join(%22%5Cn%22)%3AC.map(t%3D%3Et.text).join(%22%20%22).replace(%2F%5Cs%2B%2Fg%2C%22%20%22)%2CP%3D(t%2Ce%2Cn)%3D%3E%7Bconst%20o%3DURL.createObjectURL(new%20Blob(%5Bt%5D%2C%7Btype%3A%60%24%7Bn%7D%3Bcharset%3Dutf-8%60%7D))%2Cr%3Dv(%22a%22%2Cnull%2C%7Bhref%3Ao%2Cdownload%3A%60%24%7B_.replace(%2F%5B%5C%5C%2F%3A*%3F%22%3C%3E%7C%5D%2B%2Fg%2C%22%22).slice(0%2C90).trim()%7C%7C%22transcripcion%22%7D.%24%7Be%7D%60%7D)%3Bdocument.body.append(r)%2Cr.click()%2Cr.remove()%2CsetTimeout(()%3D%3EURL.revokeObjectURL(o)%2C2e3)%7D%2CL%3Dt%3D%3Ee%3D%3E%7BC.length%26%26t(e.currentTarget)%7D%2CM%3Dv(%22button%22%2CE%2C%7BtextContent%3A%22Copiar%22%2Conclick%3AL(t%3D%3E(async%20t%3D%3E%7Bconst%20e%3DN()%3Btry%7Bawait%20navigator.clipboard.writeText(e)%7Dcatch(t)%7Bconst%20n%3Dv(%22textarea%22%2C%7Bposition%3A%22fixed%22%2Copacity%3A%220%22%7D%2C%7Bvalue%3Ae%7D)%3Bdocument.body.append(n)%2Cn.select()%2Cdocument.execCommand(%22copy%22)%2Cn.remove()%7D(t%3D%3E%7Bconst%20e%3Dt.textContent%3Bt.textContent%3D%22%C2%A1Copiado!%22%2CsetTimeout(()%3D%3E%7Bt.textContent%3De%7D%2C1400)%7D)(t)%7D)(t))%7D)%2Cj%3Dv(%22button%22%2CE%2C%7BtextContent%3A%22.txt%22%2Conclick%3AL(()%3D%3EP(N()%2C%22txt%22%2C%22text%2Fplain%22))%7D)%2CD%3Dv(%22button%22%2CE%2C%7BtextContent%3A%22.srt%22%2Conclick%3AL(()%3D%3EP(C.map((t%2Ce)%3D%3E%60%24%7Be%2B1%7D%5Cn%24%7Bc(t.start)%7D%20--%5Cx3e%20%24%7Bc(t.end)%7D%5Cn%24%7Bt.text%7D%5Cn%60).join(%22%5Cn%22)%2C%22srt%22%2C%22application%2Fx-subrip%22))%7D)%2CU%3Dv(%22input%22%2C%7BaccentColor%3Ay%2Cmargin%3A%220%22%7D%2C%7Btype%3A%22checkbox%22%2Cchecked%3A!0%2Conchange%3At%3D%3E%7BI%3Dt.target.checked%7D%7D)%2CO%3Dv(%22label%22%2C%7Bdisplay%3A%22flex%22%2CalignItems%3A%22center%22%2Cgap%3A%226px%22%2Ccolor%3Ab%2Cfont%3A%2212px%20Roboto%2CArial%2Csans-serif%22%2Ccursor%3A%22pointer%22%2CmarginRight%3A%22auto%22%7D%2Cnull%2C%5BU%2Cdocument.createTextNode(%22Timestamps%20al%20copiar%2F.txt%22)%5D)%2CB%3D()%3D%3E%7B%24%26%26%24.removeEventListener(%22timeupdate%22%2CH)%2Cdocument.removeEventListener(%22keydown%22%2Cz%2C!0)%2CY.remove()%7D%2CV%3Dv(%22div%22%2C%7Bdisplay%3A%22flex%22%2CalignItems%3A%22flex-start%22%2Cgap%3A%228px%22%2Cpadding%3A%2214px%2016px%206px%22%7D%2Cnull%2C%5Bv(%22div%22%2C%7Bflex%3A%221%22%2CminWidth%3A%220%22%7D%2Cnull%2C%5Bv(%22div%22%2C%7Bfont%3A%22700%2015px%20Roboto%2CArial%2Csans-serif%22%2Ccolor%3Ah%7D%2C%7BtextContent%3A%22%F0%9F%93%9D%20Transcripci%C3%B3n%22%7D)%2Cv(%22div%22%2C%7Bfont%3A%2212px%20Roboto%2CArial%2Csans-serif%22%2Ccolor%3Ab%2CwhiteSpace%3A%22nowrap%22%2Coverflow%3A%22hidden%22%2CtextOverflow%3A%22ellipsis%22%2CmarginTop%3A%222px%22%7D%2C%7BtextContent%3A_%2Ctitle%3A_%7D)%5D)%2Cv(%22button%22%2C%7B...E%2Cpadding%3A%222px%2010px%22%2CfontSize%3A%2216px%22%2CborderRadius%3A%2250%25%22%7D%2C%7BtextContent%3A%22%C3%97%22%2Ctitle%3A%22Cerrar%20(Esc)%22%2Conclick%3AB%7D)%5D)%2CY%3Dv(%22div%22%2C%7Bposition%3A%22fixed%22%2Ctop%3A%2272px%22%2Cright%3A%2216px%22%2Cbottom%3A%2216px%22%2Cwidth%3A%22400px%22%2CmaxWidth%3A%22calc(100vw%20-%2032px)%22%2CzIndex%3A%222147483647%22%2Cbackground%3Am%2Ccolor%3Ah%2Cborder%3A%601px%20solid%20%24%7Bg%7D%60%2CborderRadius%3A%2214px%22%2CboxShadow%3A%220%2012px%2040px%20rgba(0%2C0%2C0%2C.55)%22%2Cdisplay%3A%22flex%22%2CflexDirection%3A%22column%22%2Coverflow%3A%22hidden%22%7D%2C%7Bid%3At%7D%2C%5BV%2Cv(%22div%22%2C%7Bdisplay%3A%22flex%22%2Cgap%3A%228px%22%2Cpadding%3A%226px%2016px%22%7D%2Cnull%2C%5Bk%5D)%2Cv(%22div%22%2C%7Bdisplay%3A%22flex%22%2Cgap%3A%226px%22%2CalignItems%3A%22center%22%2Cpadding%3A%224px%2016px%2010px%22%2CflexWrap%3A%22wrap%22%7D%2Cnull%2C%5BO%2CM%2Cj%2CD%5D)%2CS%2CR%5D)%3BY.__ytxClose%3DB%3Bconst%20X%3D()%3D%3E%7BR.textContent%3D%22%22%2CA%3DC.map(t%3D%3E%7Bconst%20e%3Dv(%22div%22%2C%7Bdisplay%3A%22flex%22%2Cgap%3A%2210px%22%2Cpadding%3A%226px%208px%22%2CborderRadius%3A%228px%22%2Cfont%3A%2214px%2F1.45%20Roboto%2CArial%2Csans-serif%22%7D%2Cnull%2C%5Bv(%22button%22%2C%7Bbackground%3A%22none%22%2Cborder%3A%22none%22%2Ccolor%3Ay%2Ccursor%3A%22pointer%22%2Cpadding%3A%220%22%2Cfont%3A%22500%2012px%2F1.9%20Roboto%2CArial%2Csans-serif%22%2CminWidth%3A%2244px%22%2CtextAlign%3A%22left%22%2CfontVariantNumeric%3A%22tabular-nums%22%7D%2C%7BtextContent%3As(t.start)%2Ctitle%3A%22Ir%20a%20este%20momento%22%2Conclick%3A()%3D%3E%7Breturn%20e%3Dt.start%2Cvoid(%24%26%26(%24.currentTime%3De%2C%24.paused%26%26%24.play().catch(()%3D%3E%7B%7D)))%3Bvar%20e%7D%7D)%2Cv(%22span%22%2C%7Bcolor%3Ah%7D%2C%7BtextContent%3At.text%7D)%5D)%3Breturn%20e.__seg%3Dt%2Ce.__txt%3Dt.text.toLowerCase()%2CR.append(e)%2Ce%7D)%7D%2CW%3D()%3D%3E%7Bconst%20t%3Dk.value.trim().toLowerCase()%3Blet%20e%3D0%3BA.forEach(n%3D%3E%7Bconst%20o%3D!t%7C%7Cn.__txt.includes(t)%3Bn.style.display%3Do%3F%22flex%22%3A%22none%22%2Co%26%26e%2B%2B%7D)%2CC.length%26%26(S.textContent%3Dt%3F%60%24%7Be%7D%20de%20%24%7BC.length%7D%20segmentos%60%3AS.__base)%7D%3Blet%20q%3Dnull%3Bconst%20H%3D()%3D%3E%7Bconst%20t%3D%24.currentTime%2Ce%3DA.find(e%3D%3Et%3E%3De.__seg.start%26%26t%3Ce.__seg.end)%3Be!%3D%3Dq%26%26(q%26%26(q.style.background%3D%22transparent%22)%2Ce%26%26(e.style.background%3D%22%23263850%22)%2Cq%3De)%7D%2Cz%3Dt%3D%3E%7B%22Escape%22%3D%3D%3Dt.key%3F(t.stopPropagation()%2CB())%3AY.contains(t.target)%26%26t.stopPropagation()%7D%3Bdocument.body.append(Y)%2Cdocument.addEventListener(%22keydown%22%2Cz%2C!0)%2C(async()%3D%3E%7Bif(!T)return%20S.textContent%3D%22Abr%C3%AD%20un%20video%20(youtube.com%2Fwatch%3Fv%3D%E2%80%A6)%20y%20volv%C3%A9%20a%20tocar%20el%20favorito.%22%2Cvoid(S.style.color%3Dw)%3Bconst%20e%3D%5B%5D%2Cc%3D%5B%5B%22API%22%2C()%3D%3Eu(T%2C!0)%5D%2C%5B%22API%20(sin%20sesi%C3%B3n)%22%2C()%3D%3Eu(T%2C!1)%5D%2C%5B%22panel%22%2C()%3D%3E(async()%3D%3E%7Blet%20e%3Df()%3Bif(!e.length)%7Bconst%20a%3Dn(%22%23description-inline-expander%20%23expand%2C%20ytd-text-inline-expander%20%23expand%22)%3Ba%26%26(a.click()%2Cawait%20r(400))%3Bconst%20i%3Dn(%22ytd-video-description-transcript-section-renderer%20button%22)%7C%7Co(%22button%2C%20yt-button-shape%20button%2C%20tp-yt-paper-item%22).find(e%3D%3E!e.closest(%60%23%24%7Bt%7D%60)%26%26%2Ftranscri%2Fi.test(%60%24%7Be.getAttribute(%22aria-label%22)%7C%7C%22%22%7D%20%24%7Be.textContent%7C%7C%22%22%7D%60))%3Bif(i)i.click()%3Belse%7Bconst%20t%3Dn('ytd-engagement-panel-section-list-renderer%5Btarget-id*%3D%22transcript%22%5D')%3Bif(!t)throw%20new%20Error('no%20encontr%C3%A9%20el%20bot%C3%B3n%20%22Mostrar%20transcripci%C3%B3n%22')%3Bt.setAttribute(%22visibility%22%2C%22ENGAGEMENT_PANEL_VISIBILITY_EXPANDED%22)%7De%3Dawait(async%20t%3D%3E%7Bconst%20e%3DDate.now()%3Blet%20n%3D%5B%5D%2Co%3D0%3Bfor(%3BDate.now()-e%3C12e3%3B)%7Bconst%20e%3Dt()%3Bif(e.length)%7Bif(e.length%3D%3D%3Dn.length)%7Bif(o%7C%7C(o%3DDate.now())%2CDate.now()-o%3E600)return%20e%7Delse%20o%3D0%3Bn%3De%7Dawait%20r(150)%7Dreturn%20n%7D)(f)%7Dconst%20s%3D%5B%5D%3Bfor(const%20t%20of%20e)%7Bconst%20e%3D(t.innerText%7C%7Ct.textContent%7C%7C%22%22).trim().match(%2F%5E(%5Cd%7B1%2C2%7D(%3F%3A%3A%5Cd%7B2%7D)%7B1%2C2%7D)%5Cs%2B(%5B%5Cs%5CS%5D%2B)%24%2F)%3Be%26%26s.push(%7Bstart%3Ai(e%5B1%5D)%2Ctext%3Aa(e%5B2%5D)%7D)%7Dif(!s.length)throw%20new%20Error(%22el%20panel%20no%20mostr%C3%B3%20segmentos%22)%3Breturn%20p(s)%7D)()%5D%5D%3Bfor(const%5Bt%2Cn%5Dof%20c)try%7Breturn%20C%3Dawait%20n()%2CS.__base%3D%60%24%7BC.length%7D%20segmentos%20%C2%B7%20%24%7Bs(C%5BC.length-1%5D.end)%7D%20%C2%B7%20fuente%3A%20%24%7Bt%7D%60%2CS.textContent%3DS.__base%2CX()%2Cvoid(%24%26%26%24.addEventListener(%22timeupdate%22%2CH))%7Dcatch(n)%7Be.push(%60%24%7Bt%7D%3A%20%24%7Bn.message%7D%60)%7DS.style.color%3Dw%2CS.textContent%3D%22No%20pude%20obtener%20la%20transcripci%C3%B3n.%20Fijate%20que%20el%20video%20tenga%20subt%C3%ADtulos%20(aunque%20sean%20autom%C3%A1ticos).%20Detalle%20%E2%86%92%20%22%2Be.join(%22%20%7C%20%22)%7D)()%7D)()%3B" title="Arrastrame a la barra de favoritos">📝 Transcribir YT</a>
+        <span class="hint"><span class="arrow">⬆</span> Arrastralo a tu barra de favoritos</span>
+      </div>
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <div class="mock" aria-hidden="true">
+      <div class="top"><div class="t1">📝 Transcripción</div><div class="t2">Cómo funciona un motor de combustión interna</div></div>
+      <div class="bar"><span class="sr">Buscar en la transcripción</span></div>
+      <div class="bar" style="padding-top:0"><span style="font-size:12px;color:#aaa;margin-right:auto">☑ Timestamps</span><span class="b">Copiar</span><span class="b">.txt</span><span class="b">.srt</span></div>
+      <div class="st">214 segmentos · 12:48 · fuente: API</div>
+      <div class="rows">
+        <div class="row"><b>0:00</b><span>Hola a todos, hoy vamos a ver cómo funciona</span></div>
+        <div class="row"><b>0:03</b><span>un motor de cuatro tiempos por dentro.</span></div>
+        <div class="row on"><b>0:07</b><span>El primer tiempo es la admisión: el pistón baja</span></div>
+        <div class="row"><b>0:11</b><span>y entra la mezcla de aire y combustible.</span></div>
+        <div class="row"><b>0:15</b><span>Después viene la compresión…</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2>Cómo se instala</h2>
+    <div class="steps">
+      <div class="card"><h3>Mostrá la barra de favoritos</h3><p>En Chrome, Edge o Brave: <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> (en Mac <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>).</p></div>
+      <div class="card"><h3>Arrastrá el botón rojo</h3><p>Agarrá <strong>📝 Transcribir YT</strong> y soltalo en la barra. Si lo clickeás acá no pasa nada: tiene que estar en tus favoritos.</p></div>
+      <div class="card"><h3>Usalo en YouTube</h3><p>Abrí un video y tocá el favorito. Se abre el panel con la transcripción. Tocalo otra vez (o <kbd>Esc</kbd>) para cerrarlo.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Qué hace</h2>
+    <div class="feats">
+      <div class="feat"><span class="ic">⏱️</span><div><h3>Timestamps clickeables</h3><p>Tocás un tiempo y el video salta ahí. Mientras se reproduce, se resalta el segmento actual.</p></div></div>
+      <div class="feat"><span class="ic">🔎</span><div><h3>Búsqueda en vivo</h3><p>Filtrá la transcripción por cualquier palabra y encontrá el momento exacto.</p></div></div>
+      <div class="feat"><span class="ic">📋</span><div><h3>Copiar con o sin tiempos</h3><p>Con timestamps, una línea por segmento. Sin timestamps, texto corrido listo para pegar en un resumen.</p></div></div>
+      <div class="feat"><span class="ic">💾</span><div><h3>Exportar .txt y .srt</h3><p>El .srt trae inicio y fin de cada subtítulo, listo para un editor de video o para VLC.</p></div></div>
+      <div class="feat"><span class="ic">🔒</span><div><h3>Nada sale de tu navegador</h3><p>No hay servidor ni API key. Corre en youtube.com con tu propia sesión, igual que el panel oficial.</p></div></div>
+      <div class="feat"><span class="ic">🌐</span><div><h3>Subtítulos manuales o automáticos</h3><p>Sirve para cualquier video donde YouTube muestre "Mostrar transcripción".</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap mobile">
+    <div>
+      <h2 style="margin-bottom:8px">¿En el celular o sin poder arrastrar?</h2>
+      <ol>
+        <li>Guardá esta página en favoritos (cualquiera sirve).</li>
+        <li>Tocá <strong>Copiar código</strong>.</li>
+        <li>Editá ese favorito: cambiale el nombre a "Transcribir YT" y pegá el código en la URL.</li>
+        <li>En YouTube (versión web), abrí favoritos y tocalo.</li>
+      </ol>
+    </div>
+    <button class="copy" id="copy">📋 Copiar código</button>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="card warn">
+      <h3>Límites, para que no te sorprendan</h3>
+      <p>Solo funciona en videos que tengan subtítulos (aunque sean automáticos). Si el video no tiene, el panel te avisa. Como usa la misma información que la web de YouTube, si YouTube cambia algo por dentro puede dejar de andar hasta que se actualice el botón: en ese caso volvé a arrastrarlo desde esta página.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Hecho por <a href="https://github.com/FernandoAlmansa">Fernando Almansa</a>. No está afiliado a YouTube ni a Google.</div>
+</footer>
+
+<script>
+  const bm = document.getElementById('bm');
+  const toast = document.getElementById('toast');
+  const say = (t) => { toast.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => toast.textContent = '', 3500); };
+  bm.addEventListener('click', (e) => {
+    e.preventDefault();
+    bm.classList.remove('shake'); void bm.offsetWidth; bm.classList.add('shake');
+    say('No hay que clickearlo acá: arrastralo a la barra de favoritos y usalo en YouTube.');
+  });
+  document.getElementById('copy').addEventListener('click', async (e) => {
+    const b = e.currentTarget, code = bm.getAttribute('href');
+    try { await navigator.clipboard.writeText(code); }
+    catch { const t = document.createElement('textarea'); t.value = code; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); }
+    const o = b.textContent; b.textContent = '✅ Copiado'; setTimeout(() => b.textContent = o, 1600);
+  });
+</script>
+</body>
+</html>
